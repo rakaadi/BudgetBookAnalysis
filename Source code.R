@@ -1,8 +1,4 @@
 # Library yang digunakan
-library(readr)
-library(dplyr)
-library(tidyr)
-library(ggplot2)
 library(tidyverse)
 
 # Membaca file csv
@@ -26,12 +22,6 @@ spending_data <- replace_na(spending_data, list(Subcategory = "None"))
   # Menghitung nilai absolut dari kolom Amount,
   # untuk menghilangkan nilai negatif
 spending_data$Amount <- abs(spending_data$Amount)
-
-# kode di bawah mungkin tidak akan dipakai
-# Menggabungkan kolom Main_category dan Subcategory
-spending_data2 <- unite(
-  spending_data, Category, 'Main_category', 'Subcategory', 
-  sep = ', ', remove = TRUE)
 
 # Mengambil data investasi dan menghilangkan kolom Subcategory
 investment <- filter(spending_data, Main_category == 'Investment')
