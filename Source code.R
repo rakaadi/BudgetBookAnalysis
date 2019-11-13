@@ -1,5 +1,7 @@
 # Library yang digunakan
 library(tidyverse)
+library(lubridate)
+library(plotly)
 
 # Membaca file csv
 budget <- read_csv2("January-august_2019.csv", col_types = cols(
@@ -10,40 +12,36 @@ budget <- read_csv2("January-august_2019.csv", col_types = cols(
 head(budget)
 
 # Merapihkan kolom
+  # Mengubah nama kolom Main category
+budget <- rename(budget, Main_category = 'Main category')
+
+  # Menfilter kolom Main_category
   # Menghilangkan kolom 'Comment'
-spending_data <- select(budget, -Comment)
+spending_data <- filter(budget, Main_category != 'Income' & Main_category != 'Saving')
+spending_data <- select(spending_data, -Comment)
 head(spending_data)
 
-  # Mengubah nama kolom Main category
-  # dan menghilangkan nilai NA di kolom Subcategory
-spending_data <- rename(spending_data, Main_category = 'Main category')
-spending_data <- replace_na(spending_data, list(Subcategory = "None"))
-
-  # Menghitung nilai absolut dari kolom Amount,
-  # untuk menghilangkan nilai negatif
-spending_data$Amount <- abs(spending_data$Amount)
+  # Menambah kolom 'wday' dan 'Month'
+spending_data$Day <- wday(spending_data$Date, label = TRUE, abbr = FALSE)
+spending_data$Month <- format(as_date(spending_data$Date), '%Y-%m')
 
 # Mengambil data investasi dan menghilangkan kolom Subcategory
 investment <- filter(spending_data, Main_category == 'Investment')
 investment <- select(investment, -Subcategory)
 
 # Mengambil data pemasukan 
-income <- filter(spending_data, Main_category == "Income")
-
-# Mengubah isi dari kolom subcategory, mungkin tidak dipakai
-
-# Mengelompokan data berdasarkan bulan
-# Kode ini belum berhasil sesuai harapan
-month_investment <- investment %>%
-  mutate_at(investment, Date, format(investment$Date, "%m%Y")) %>%
-  group_by(month_investment, Date) %>%
-  summarise(Amount=sum(Amount))
-
-# Menjumlahkan pengeluaran untuk persatu hari
-gdate_spending <- group_by(spending_data, Date) %>%
-  summarise_if(is.numeric, sum)
+income <- filter(budget, Main_category == "Income")
 
 # Plotting
+  # Spending over time
+spending_data %>%
+  ggplot(mapping = aes(x = Date, y = abs(Amount))) +
+  geom_line() +
+  labs(y = "Amount") -> P
+
+    # Convert to plotly to see detail metadata 
+ggplotly(P)
+
   # investment
 ggplot(data = investment, mapping = aes(x = Title, y = abs(Amount))) +
   geom_col(mapping = aes(fill = Title)) +
