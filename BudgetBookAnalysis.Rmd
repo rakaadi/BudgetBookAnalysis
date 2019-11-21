@@ -1,0 +1,68 @@
+---
+title: "BudgetBookAnalysis"
+author: "Raka Adinugraha"
+date: "November 21, 2019"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load Packages, include = FALSE}
+library(tidyverse)
+library(lubridate)
+library(scales)
+library(forcats)
+library(TSclust)
+library(reshape2)
+library(plotly)
+```
+
+## About the data
+This data is a record of my personal spending from January 2019 to August 2019.
+During this period, I record every spending that occurs in every account that I have which is, cash money, bank account, and various saving box.
+The data itself was exported from 'My Budget Book' android app in my phone. 
+## Purpose
+The purpose of this analysis is to see the spending trend over this period and make it as a guidefor future spending decisions to improve finances conditions. Other than that, it also uses as an indicator of how good or not I at doing the records of the spending.
+
+## Processing the data
+The datasets turned into a tibble. Preset Date and Amount as date and number type respectively. The rest of the column will become character type by default. 
+
+```{r read data}
+budget <- read_csv2("January-august_2019.csv", col_types = cols(
+  Date = col_date(format = "%m/%d/%Y"),
+  Amount = col_number()
+))
+head(budget)
+```
+
+Upon looking to the dataset, we can see there is some element of it we can tweak. First we can see that 'Main category' column name have a space in it, that in my experience could be problematic when try to use it for plotting, so we need to change it. We also add new 'Month_Year' column that will help our further analysis.
+```{r change column name & add Month_Year column}
+budget <- rename(budget, Main_category = 'Main category')
+budget$Month_Year <- format(as_date(budget$Date), '%Y-%m')
+head(budget)
+```
+
+
+## GitHub Documents
+
+This is an R Markdown format used for publishing markdown documents to GitHub. When you click the **Knit** button all R code chunks are run and a markdown file (.md) suitable for publishing to GitHub is generated.
+
+## Including Code
+
+You can include R code in the document as follows:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
