@@ -1,5 +1,5 @@
 ---
-title: "BudgetBookAnalysis"
+title: "Budget Book Analysis"
 author: "Raka Adinugraha"
 date: "November 21, 2019"
 output: github_document
@@ -19,14 +19,16 @@ library(reshape2)
 library(plotly)
 ```
 
-## About the data
+# About the data
 This data is a record of my personal spending from January 2019 to August 2019.
 During this period, I record every spending that occurs in every account that I have which is, cash money, bank account, and various saving box.
-The data itself was exported from 'My Budget Book' android app in my phone. 
-## Purpose
+The data itself was exported from 'My Budget Book' android app in my phone, and the all amount is in IDR.
+We mainly gonna be focus the analysis on monthly basis.
+
+# Purpose
 The purpose of this analysis is to see the spending trend over this period and make it as a guidefor future spending decisions to improve finances conditions. Other than that, it also uses as an indicator of how good or not I at doing the records of the spending.
 
-## Processing the data
+# Processing the data
 The datasets turned into a tibble. Preset Date and Amount as date and number type respectively. The rest of the column will become character type by default. 
 
 ```{r read data}
@@ -38,31 +40,116 @@ head(budget)
 ```
 
 Upon looking to the dataset, we can see there is some element of it we can tweak. First we can see that 'Main category' column name have a space in it, that in my experience could be problematic when try to use it for plotting, so we need to change it. We also add new 'Month_Year' column that will help our further analysis.
+
 ```{r change column name & add Month_Year column}
 budget <- rename(budget, Main_category = 'Main category')
 budget$Month_Year <- format(as_date(budget$Date), '%Y-%m')
 head(budget)
 ```
 
+Next we create several dataframe that will be use for our analysis. spending_data dataframe will consist of all of our spending data. In this dataframe we also remove 'Comment' column because it containt mostly about detailed note like the amount of certain thing bought, or how much discount we get. On top of it, not every entry have their comment column filed. Of course we can make further analysis about it, but it was beyond the scope of this analysis. 
 
-## GitHub Documents
-
-This is an R Markdown format used for publishing markdown documents to GitHub. When you click the **Knit** button all R code chunks are run and a markdown file (.md) suitable for publishing to GitHub is generated.
-
-## Including Code
-
-You can include R code in the document as follows:
-
-```{r cars}
-summary(cars)
+```{r spending_data}
+budget %>%
+  filter(Main_category != 'Income' & Main_category != 'Saving') %>%
+  select(-Comment) -> spending_data
+head(spending_data)
 ```
 
-## Including Plots
+In the investment dataframe, containt all data of the investment that we made during the time period. We remove 'Subcategory' column because all entry have the same subcategory.
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r investment}
+spending_data %>%
+  filter(Main_category == 'Investment') %>%
+  select(-Subcategory) -> investment
+head(investment)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+As it name suggest, the income dataframe contain all our income labeled transaction.
+
+```{r income}
+income <- filter(budget, Main_category == 'Income')
+head(income)
+```
+
+savings consist the data of small amount of money we save.
+
+```{r savings}
+budget %>%
+  filter(Main_category == 'Saving') %>%
+  select(-Comment) -> savings
+head(savings)
+```
+
+# Visualization
+
+The visualization of the data can help the analysis by giving more insight to the data itself. I use ggplot2 as the main tool for visualizing the data, and the tidyverse package library for manipulating the data. 
+
+By using plotly with its ggplotly() function to the ggplot output, we can convert the ggplot output to plotly output to use hovering tool to see the detail of every point. Unfortunately, this does not work with the .rmd file for github document. But it can be reproduce in R Studio viewer tab, by simply using ggplotly() to their respective plot output.  
+
+## Spending over time
+
+With this visualization we can see the entierty of the spending data. With this we also can identifying every spike in our spending and determined what is the necessary step we can take to prevent that in the future, if possible. There is a consistent spike in every month, and another major spike outlier that we can spot.
+
+```{r }
+# Spending over time
+spending_data %>%
+  ggplot(mapping = aes(x = Date, y = abs(Amount))) +
+  geom_line() +
+  labs(y = "Amount") +
+  scale_y_continuous(labels = comma) -> P
+
+# ggplotly(P)
+```
+
+## Spending by Category
+
+This section we will see several plots of spending divided by the Main category. 
+
+### Spending/Month by Category
+
+With this plot we can see the highest spending happen in April, mainly contributed by the general expenses Main category and compensation transaction. The expenses category have a relatively high amount compare to others spending category, almost all was above to 2 million only in August it was below. We also can see Home category also have consistenly high amount in all month, only in June it dip below 500K. 
+
+```{r }
+spending_data %>%
+  group_by(Month = month(Date), Year = year(Date), Main_category) %>%
+  summarise(Amount = sum(abs(Amount))) %>%
+  ggplot(mapping = aes(x = Month, y = Amount, fill = Main_category)) +
+  geom_bar(stat = 'identity', position = position_dodge()) +
+  labs(x = "", title = "Spending/Month", subtitle =  "by Category", fill = "Category") +
+  scale_x_continuous(
+    breaks = c(1, 2, 3, 4, 5, 6, 7, 8), 
+    label = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug")) +
+  scale_y_continuous(labels = comma) -> P2
+
+P2
+```
+
+### Average Spending/Category
+
+We can see here that a few category only occurs a few or even a single time. Investment and the general expenses category coincidentally have the same average value while also the highest average value of transactions that happen multiple times. There is also an outlier with high value in compesation transactions. 
+
+```{r }
+spending_data %>%
+  ggplot(mapping = aes(x = Main_category, y = abs(Amount))) +
+  geom_boxplot() +
+  labs(x = "Main category", y = "Amount", title = "Average Spending", subtitle = "by Category") +
+  scale_y_continuous(labels = comma) +
+  coord_flip() -> P3
+P3
+```
+
+### Balance Adjustment Category
+
+This category and compensation transactions category exist indicating there was a considerably flaws in our way of recording the spending and income data. These category basically is a lost records of our spending data, this is known by manual amount checking on all our account by the end of every month. Balance adjustment and Compensation transactions mostly indicating a considerable number of transactions are not recorded properly. If combined these two categories also happen to be the largest records of all entire spending.
+
+```{r }
+spending_data %>%
+  filter(Main_category %in% c("Balance Adjustment", "Compensation transactions")) %>%
+  ggplot(mapping = aes(x = Month_Year, y = Amount, fill = Title)) +
+  geom_col(position = position_dodge2()) +
+  labs(x = "Date", title = "Balance Adjustment") +
+  scale_y_continuous(labels = comma) +
+  scale_fill_discrete(name = "") -> P4
+P4
+```
